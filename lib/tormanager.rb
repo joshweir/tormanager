@@ -1,9 +1,6 @@
 require "tormanager/version"
-require "tormanager/configuration"
 require "tormanager/process_helper"
-require "tormanager/tor_process_manager"
-require "tormanager/tor_controller"
+require "tormanager/tor_process"
+require "tormanager/proxy"
+require "tormanager/ip_address_control"
 
-module TorManager
-  # Your code goes here...
-end

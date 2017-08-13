@@ -4,7 +4,7 @@ require 'fileutils'
 require 'securerandom'
 
 module TorManager
-  class TorProcessManager
+  class TorProcess
     attr_accessor :settings
 
     def initialize params={}

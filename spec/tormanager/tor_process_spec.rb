@@ -1,48 +1,48 @@
 require "spec_helper"
 
 module TorManager
-  describe TorProcessManager do
+  describe TorProcess do
     after :all do
       EyeManager.destroy
     end
 
     context 'when initialized with default params' do
       before :all do
-        @tpm = TorProcessManager.new
+        @tp = TorProcess.new
       end
 
       it "initializes with default parameters" do
-        expect(@tpm.settings[:tor_port]).to eq 9050
-        expect(@tpm.settings[:control_port]).to eq 50500
-        expect(@tpm.settings[:pid_dir]).to eq '/tmp'
-        expect(@tpm.settings[:log_dir]).to eq '/tmp'
-        expect(@tpm.settings[:tor_data_dir]).to be_nil
-        expect(@tpm.settings[:tor_new_circuit_period]).to eq 60
-        expect(@tpm.settings[:max_tor_memory_usage_mb]).to eq 200
-        expect(@tpm.settings[:max_tor_cpu_percentage]).to eq 10
-        expect(@tpm.settings[:eye_tor_config_template])
+        expect(@tp.settings[:tor_port]).to eq 9050
+        expect(@tp.settings[:control_port]).to eq 50500
+        expect(@tp.settings[:pid_dir]).to eq '/tmp'
+        expect(@tp.settings[:log_dir]).to eq '/tmp'
+        expect(@tp.settings[:tor_data_dir]).to be_nil
+        expect(@tp.settings[:tor_new_circuit_period]).to eq 60
+        expect(@tp.settings[:max_tor_memory_usage_mb]).to eq 200
+        expect(@tp.settings[:max_tor_cpu_percentage]).to eq 10
+        expect(@tp.settings[:eye_tor_config_template])
             .to eq File.join(File.expand_path('../../..', __FILE__),
                              'lib/tormanager/eye/tor.template.eye.rb')
-        expect(@tpm.settings[:control_password].length).to eq 12
-        expect(@tpm.settings[:hashed_control_password][0..2])
+        expect(@tp.settings[:control_password].length).to eq 12
+        expect(@tp.settings[:hashed_control_password][0..2])
             .to eq '16:'
-        expect(@tpm.settings[:tor_log_switch]).to be_nil
-        expect(@tpm.settings[:tor_logging]).to be_nil
-        expect(@tpm.settings[:eye_logging]).to be_nil
-        expect(@tpm.settings[:dont_remove_tor_config]).to be_nil
+        expect(@tp.settings[:tor_log_switch]).to be_nil
+        expect(@tp.settings[:tor_logging]).to be_nil
+        expect(@tp.settings[:eye_logging]).to be_nil
+        expect(@tp.settings[:dont_remove_tor_config]).to be_nil
       end
 
       it "generates a random control_password (between 8 and 16 chars) " +
              "and a hash_control_password when none specified" do
-        expect(@tpm.settings[:control_password].length).to eq 12
-        expect(@tpm.settings[:hashed_control_password][0..2])
+        expect(@tp.settings[:control_password].length).to eq 12
+        expect(@tp.settings[:hashed_control_password][0..2])
             .to eq '16:'
       end
 
       describe "#start" do
         before :all do
           EyeManager.destroy
-          cleanup_related_files @tpm.settings
+          cleanup_related_files @tp.settings
           @in_use_control_port = 50700
           @in_use_tor_port = 9250
           @tcp_server_50700 = TCPServer.new('127.0.0.1', 50700)
@@ -58,13 +58,13 @@ module TorManager
         it "validates that the tor control port is open" do
           expect(@in_use_control_port).to eq 50700
           expect(@tcp_server_50700.class).to eq TCPServer
-          expect{TorProcessManager.new(tor_port: 52700,
+          expect{TorProcess.new(tor_port: 52700,
                                        control_port: @in_use_control_port).start}
               .to raise_error(/Cannot spawn Tor process as control port 50700 is in use/)
         end
 
         it "validates that the tor port is open" do
-          expect{TorProcessManager.new(tor_port: @in_use_tor_port,
+          expect{TorProcess.new(tor_port: @in_use_tor_port,
                                        control_port: 53700).start}
               .to raise_error(/Cannot spawn Tor process as port 9250 is in use/)
         end
@@ -72,27 +72,27 @@ module TorManager
         context 'when spawning the tor process' do
           before :all do
             EyeManager.destroy
-            @tpm.start
+            @tp.start
           end
 
           after :all do
-            @tpm.stop
+            @tp.stop
           end
 
           it "creates a tor eye config file for the current Tor instance settings" do
-            expect(read_tor_process_manager_config(@tpm.settings))
-                .to match(/tor --SocksPort #{@tpm.settings[:tor_port]}/)
+            expect(read_tor_process_manager_config(@tp.settings))
+                .to match(/tor --SocksPort #{@tp.settings[:tor_port]}/)
           end
 
           it "starts tor using the hashed_control_password" do
-            expect(tor_process_status(@tpm.settings)).to eq "up"
-            expect(tor_process_listing(@tpm.settings))
+            expect(tor_process_status(@tp.settings)).to eq "up"
+            expect(tor_process_listing(@tp.settings))
                 .to match /HashedControlPassword 16:/
           end
 
           it "does not do any tor logging or eye logging" do
             expect(File.exists?(
-                "/tmp/tormanager-tor-#{@tpm.settings[:tor_port]}-#{@tpm.settings[:parent_pid]}.log"))
+                "/tmp/tormanager-tor-#{@tp.settings[:tor_port]}-#{@tp.settings[:parent_pid]}.log"))
                 .to be_falsey
             expect(File.exists?("/tmp/tormanager.eye.log"))
                 .to be_falsey
@@ -103,7 +103,7 @@ module TorManager
 
     context 'when initialized with user params' do
       before :all do
-        @tpm = TorProcessManager.new control_password: 'test_password',
+        @tp = TorProcess.new control_password: 'test_password',
                                      tor_port: 9350,
                                      control_port: 53700,
                                      tor_logging: true,
@@ -113,8 +113,8 @@ module TorManager
       end
 
       it "should generate a hashed_control_password based on user specified control_password" do
-        expect(@tpm.settings[:control_password]).to eq 'test_password'
-        expect(@tpm.settings[:hashed_control_password][0..2])
+        expect(@tp.settings[:control_password]).to eq 'test_password'
+        expect(@tp.settings[:hashed_control_password][0..2])
             .to eq '16:'
       end
 
@@ -126,23 +126,23 @@ module TorManager
         context 'when spawning the tor process' do
           before :all do
             EyeManager.destroy
-            cleanup_related_files @tpm.settings
-            @tpm.start
+            cleanup_related_files @tp.settings
+            @tp.start
           end
 
           after :all do
-            @tpm.stop
+            @tp.stop
           end
 
           it "creates a tor eye config file for the current Tor instance settings" do
-            expect(read_tor_process_manager_config(@tpm.settings))
-                .to match(/tor --SocksPort #{@tpm.settings[:tor_port]}/)
+            expect(read_tor_process_manager_config(@tp.settings))
+                .to match(/tor --SocksPort #{@tp.settings[:tor_port]}/)
           end
 
           it "does tor logging when tor_logging is true" do
-            expect(tor_process_status(@tpm.settings)).to eq "up"
+            expect(tor_process_status(@tp.settings)).to eq "up"
             expect(File.exists?(
-                "/tmp/tormanager-tor-#{@tpm.settings[:tor_port]}-#{@tpm.settings[:parent_pid]}.log"))
+                "/tmp/tormanager-tor-#{@tp.settings[:tor_port]}-#{@tp.settings[:parent_pid]}.log"))
                 .to be_truthy
           end
 
@@ -152,12 +152,12 @@ module TorManager
           end
 
           it "uses the :tor_data_dir if passed as input" do
-            expect(tor_process_listing(@tpm.settings))
+            expect(tor_process_listing(@tp.settings))
                 .to match /DataDirectory \/tmp\/tor_data\/9350/
           end
 
           it "uses the :tor_log_switch if passed as input" do
-            expect(tor_process_listing(@tpm.settings))
+            expect(tor_process_listing(@tp.settings))
                 .to match /Log notice syslog/
           end
         end
@@ -166,12 +166,12 @@ module TorManager
 
     describe "#stop" do
       before :all do
-        @tpm = TorProcessManager.new
-        @tpm_keep_config = TorProcessManager.new dont_remove_tor_config: true,
+        @tp = TorProcess.new
+        @tp_keep_config = TorProcess.new dont_remove_tor_config: true,
                                                  tor_port: 9450,
                                                  control_port: 53500
-        cleanup_related_files @tpm.settings
-        cleanup_related_files @tpm_keep_config.settings
+        cleanup_related_files @tp.settings
+        cleanup_related_files @tp_keep_config.settings
       end
 
       after :all do
@@ -179,29 +179,29 @@ module TorManager
       end
 
       it "stops the tor process" do
-        @tpm.start
-        expect(tor_process_status(@tpm.settings)).to eq "up"
-        @tpm.stop
-        expect(tor_process_status(@tpm.settings)).to_not match /up|starting/
+        @tp.start
+        expect(tor_process_status(@tp.settings)).to eq "up"
+        @tp.stop
+        expect(tor_process_status(@tp.settings)).to_not match /up|starting/
       end
 
       it "removes the eye tor config" do
-        expect(File.exists?("/tmp/tormanager.tor.#{@tpm.settings[:tor_port]}." +
-                                "#{@tpm_keep_config.settings[:parent_pid]}.eye.rb"))
+        expect(File.exists?("/tmp/tormanager.tor.#{@tp.settings[:tor_port]}." +
+                                "#{@tp_keep_config.settings[:parent_pid]}.eye.rb"))
             .to be_falsey
       end
 
       it "leaves the eye tor config if setting :dont_remove_tor_config is true" do
-        @tpm_keep_config.start
-        @tpm_keep_config.stop
-        expect(File.exists?("/tmp/tormanager.tor.#{@tpm_keep_config.settings[:tor_port]}." +
-                                "#{@tpm_keep_config.settings[:parent_pid]}.eye.rb"))
+        @tp_keep_config.start
+        @tp_keep_config.stop
+        expect(File.exists?("/tmp/tormanager.tor.#{@tp_keep_config.settings[:tor_port]}." +
+                                "#{@tp_keep_config.settings[:parent_pid]}.eye.rb"))
             .to be_truthy
       end
     end
 
     describe ".stop_obsolete_processes" do
-      let(:tpm) { TorProcessManager.new }
+      let(:tpm) { TorProcess.new }
 
       before do
         cleanup_related_files tpm.settings
@@ -220,7 +220,7 @@ module TorManager
         tpm.start
         expect(tor_process_status(tpm.settings)).to eq "up"
         expect(tor_process_status(tor_port: 9450, parent_pid: 12345)).to eq "up"
-        TorProcessManager.stop_obsolete_processes
+        TorProcess.stop_obsolete_processes
         expect(tor_process_status(tpm.settings)).to eq "up"
         expect(tor_process_status(tor_port: 9450, parent_pid: 12345)).to_not match /up|starting/
       end
@@ -228,8 +228,8 @@ module TorManager
 
     describe ".tor_running_on?" do
       before :all do
-        @tpm = TorProcessManager.new
-        cleanup_related_files @tpm.settings
+        @tp = TorProcess.new
+        cleanup_related_files @tp.settings
       end
 
       after :all do
@@ -237,28 +237,28 @@ module TorManager
       end
 
       it "is true if Tor is running on port" do
-        @tpm.start
-        expect(tor_process_status(@tpm.settings)).to eq "up"
-        expect(TorProcessManager.tor_running_on?(port: @tpm.settings[:tor_port]))
+        @tp.start
+        expect(tor_process_status(@tp.settings)).to eq "up"
+        expect(TorProcess.tor_running_on?(port: @tp.settings[:tor_port]))
             .to be_truthy
-        @tpm.stop
+        @tp.stop
       end
 
       it "is not true if Tor is not running on port" do
-        expect(TorProcessManager.tor_running_on?(port: @tpm.settings[:tor_port]))
+        expect(TorProcess.tor_running_on?(port: @tp.settings[:tor_port]))
             .to be_falsey
       end
 
       it "is true if Tor is running on port and current pid is tor parent_pid" do
-        @tpm.start
-        expect(tor_process_status(@tpm.settings)).to eq "up"
-        expect(TorProcessManager.tor_running_on?(port: @tpm.settings[:tor_port],
-                      parent_pid: @tpm.settings[:parent_pid]))
+        @tp.start
+        expect(tor_process_status(@tp.settings)).to eq "up"
+        expect(TorProcess.tor_running_on?(port: @tp.settings[:tor_port],
+                      parent_pid: @tp.settings[:parent_pid]))
             .to be_truthy
-        expect(TorProcessManager.tor_running_on?(port: @tpm.settings[:tor_port],
-                                                 parent_pid: @tpm.settings[:parent_pid] + 1))
+        expect(TorProcess.tor_running_on?(port: @tp.settings[:tor_port],
+                                                 parent_pid: @tp.settings[:parent_pid] + 1))
             .to be_falsey
-        @tpm.stop
+        @tp.stop
       end
     end
   end

@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["joshweir"]
   spec.email         = ["joshua.weir@gmail.com"]
 
-  spec.summary       = %q{Start, stop, monitor and control a Tor process using Ruby.}
+  spec.summary       = %q{Start, stop, monitor, control and proxy through a Tor process using Ruby.}
   #spec.description   = %q{TODO: Write a longer description or delete this line.}
   spec.homepage      = "https://github.com/joshweir/tormanager"
   spec.license       = "MIT"
