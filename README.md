@@ -60,16 +60,16 @@ You can also spawn a Tor process with control over parameters:
 ```ruby
 tor_process = 
   TorManager::TorProcess.new tor_port: 9051, 
-                                                      control_port: 50501, 
-                                                      pid_dir: '/my/pid/dir',
-                                                      log_dir: '/my/log/dir',
-                                                      tor_data_dir: '/my/tor/datadir',
-                                                      tor_new_circuit_period: 120,
-                                                      max_tor_memory_usage_mb: 400,
-                                                      max_tor_cpu_percentage: 15,
-                                                      control_password: 'mycontrolpass',
-                                                      eye_logging: true,
-                                                      tor_logging: true
+                             control_port: 50501, 
+                             pid_dir: '/my/pid/dir',
+                             log_dir: '/my/log/dir',
+                             tor_data_dir: '/my/tor/datadir',
+                             tor_new_circuit_period: 120,
+                             max_tor_memory_usage_mb: 400,
+                             max_tor_cpu_percentage: 15,
+                             control_password: 'mycontrolpass',
+                             eye_logging: true,
+                             tor_logging: true
 tor_process.start
 ```
 
@@ -81,7 +81,7 @@ When done with the Tor process, `stop` it:
 tor_process.stop 
 ```
 	
-The following table describes the ```ruby TorManager::TorProcess``` parameters:
+The following table describes the `TorManager::TorProcess` parameters:
 	
 | Parameter | Default Value | Description |
 | --- | --- | --- |
@@ -104,15 +104,21 @@ The following table describes the ```ruby TorManager::TorProcess``` parameters:
 
 To stop any Tor instances that have been previously started by Tor Manager but were not stopped (say in the event of a parent process crash) **_††_**: 
 
-    TorProcess.stop_obsolete_processes 
+```ruby
+TorProcess.stop_obsolete_processes 
+```
 	
 Query whether Tor Manager has any Tor processes running on a particular port **_††_**: 
 
-    TorProcess.tor_running_on? port: 9050 
+```ruby
+TorProcess.tor_running_on? port: 9050 
+```
 
 Query whether Tor Manager has any Tor processes running on a particular port associated to a particular parent ruby pid **_††_**:
 
-    TorProcess.tor_running_on? port: 9050, parent_pid: 12345
+```ruby
+TorProcess.tor_running_on? port: 9050, parent_pid: 12345
+```
 
 **_††_** Note that this command applies only to Tor processes that were started by Tor Manager. 
 Tor processes that have been started external to Tor Manager will not be impacted.  
@@ -127,20 +133,24 @@ Once you have a `TorProcess` started, you can:
 
 The remaining examples assume that you have instantiated a `TorProcess` ie: 
 
-    tor_process = TorManager::TorProcess.new
-    tor_process.start
+```ruby
+tor_process = TorManager::TorProcess.new
+tor_process.start
+```
 
 #### Proxy Through Tor
-	
-    tor_proxy = TorManager::Proxy.new tor_process: tor_process 
-    tor_proxy.proxy do 
-      tor_ip = RestClient::Request.execute(
-                 method: :get,
-                 url: 'http://bot.whatismyipaddress.com').to_str
-    end
-	my_ip = RestClient::Request.execute(
-	             method: :get,
-                 url: 'http://bot.whatismyipaddress.com').to_str
+
+```ruby
+tor_proxy = TorManager::Proxy.new tor_process: tor_process 
+tor_proxy.proxy do 
+  tor_ip = RestClient::Request.execute(
+             method: :get,
+             url: 'http://bot.whatismyipaddress.com').to_str
+end
+my_ip = RestClient::Request.execute(
+             method: :get,
+             url: 'http://bot.whatismyipaddress.com').to_str
+```
 	
 Note that in the above code the `RestClient::Request` returning `tor_ip` is routed through the Tor endpoint because it is yielded 
 through the `TorManager::Proxy#proxy` block. The following request returning `my_ip` will not be routed through the Tor endpoint 
@@ -149,47 +159,55 @@ hence returning your current IP address.
 You could route [Capybara](https://github.com/teamcapybara/capybara) requests through the proxy (just make sure you use the `:poltergeist` driver and set the proxy 
 to use the Tor socks proxy): 
 
-    Capybara.default_driver = :poltergeist
-    Capybara.register_driver :poltergeist do |app|
-      Capybara::Poltergeist::Driver.new(app, {
-        :phantomjs => Phantomjs.path,
-        :phantomjs_options => ["--proxy-type=socks5", "--proxy=127.0.0.1:9050"]
-      })
-    end
-    tor_proxy = TorManager::Proxy.new tor_process: tor_process 
-    tor_proxy.proxy do 
-      tor_ip = Capybara.visit('http://bot.whatismyipaddress.com').text
-    end
+```ruby
+Capybara.default_driver = :poltergeist
+Capybara.register_driver :poltergeist do |app|
+  Capybara::Poltergeist::Driver.new(app, {
+    :phantomjs => Phantomjs.path,
+    :phantomjs_options => ["--proxy-type=socks5", "--proxy=127.0.0.1:9050"]
+  })
+end
+tor_proxy = TorManager::Proxy.new tor_process: tor_process 
+tor_proxy.proxy do 
+  tor_ip = Capybara.visit('http://bot.whatismyipaddress.com').text
+end
+```
 
 #### Query IP Address 
 
 Query the Tor endpoint for the current IP address: 
 
-    tor_proxy = TorManager::Proxy.new tor_process: tor_process 	
-    tor_ip_control = 
-	  TorManager::IpAddressControl.new tor_process: tor_process, 
-                                       tor_proxy: tor_proxy 
-    tor_ip_control.get_ip									   
+```ruby
+tor_proxy = TorManager::Proxy.new tor_process: tor_process 	
+tor_ip_control = 
+  TorManager::IpAddressControl.new tor_process: tor_process, 
+                                   tor_proxy: tor_proxy 
+tor_ip_control.get_ip									   
+```
 	
 When the `TorManager::IpAddressControl#get_ip` method is called, the IP address is stored in instance variable: 
 
-    tor_ip_control.ip 
-
+```ruby
+tor_ip_control.ip 
+```
 	
 #### Change IP Address
 
 Get a new IP address: 
 
-    tor_proxy = TorManager::Proxy.new tor_process: tor_process 	
-    tor_ip_control = 
-	  TorManager::IpAddressControl.new tor_process: tor_process, 
-                                       tor_proxy: tor_proxy 
-    tor_ip_control.get_new_ip									   
-	
+```ruby
+tor_proxy = TorManager::Proxy.new tor_process: tor_process 	
+tor_ip_control = 
+  TorManager::IpAddressControl.new tor_process: tor_process, 
+                                   tor_proxy: tor_proxy 
+tor_ip_control.get_new_ip									   
+```
+
 When the `TorManager::IpAddressControl#get_new_ip` method is called, the IP address is stored in instance variable: 
 
-    tor_ip_control.ip
-
+```ruby
+tor_ip_control.ip
+```
 	
 ## Contributing
 
