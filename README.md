@@ -36,6 +36,8 @@ This section shows how to start, stop and manage Tor processes.
 Start a Tor process with default settings:
 
 ```ruby
+require 'tormanager'
+
 tor_process = TorManager::TorProcess.new
 tor_process.start
 
