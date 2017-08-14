@@ -119,13 +119,13 @@ The remaining examples assume that you have instantiated a `TorProcess` ie:
 	
     tor_proxy = TorManager::Proxy.new tor_process: tor_process 
     tor_proxy.proxy do 
-      tor_ip = RestClient::Request.execute(method: :get,
-                              url: 'http://bot.whatismyipaddress.com')
-                     .to_str
+      tor_ip = RestClient::Request.execute(
+                 method: :get,
+                 url: 'http://bot.whatismyipaddress.com').to_str
     end
-	my_ip = RestClient::Request.execute(method: :get,
-                              url: 'http://bot.whatismyipaddress.com')
-                     .to_str
+	my_ip = RestClient::Request.execute(
+	             method: :get,
+                 url: 'http://bot.whatismyipaddress.com').to_str
 	
 Note that in the above code the `RestClient::Request` returning `tor_ip` is routed through the Tor endpoint because it is yielded 
 through the `TorManager::Proxy#proxy` block. The following request returning `my_ip` will not be routed through the Tor endpoint 
