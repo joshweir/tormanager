@@ -35,11 +35,13 @@ This section shows how to start, stop and manage Tor processes.
 
 Start a Tor process with default settings:
 
-    tor_process = TorManager::TorProcess.new
-    tor_process.start
-	
-	#you can get the control password for the Tor process if you want: 
-	tor_process.settings[:control_password]
+```ruby
+tor_process = TorManager::TorProcess.new
+tor_process.start
+
+#you can get the control password for the Tor process if you want: 
+tor_process.settings[:control_password]
+```
 
 By default, the Tor process will use using port `9050` and control port `50500` and
 will be spawned using [Eye](https://github.com/kostya/eye) ensuring that the process remains in a healthy state. 
@@ -56,28 +58,30 @@ More information can be found in the `TorManager::TorProcess` parameters table b
 You can also spawn a Tor process with control over parameters:
 
 ```ruby
-    tor_process = 
-	  TorManager::TorProcess.new tor_port: 9051, 
-	                             control_port: 50501, 
-                                 pid_dir: '/my/pid/dir',
-                                 log_dir: '/my/log/dir',
-                                 tor_data_dir: '/my/tor/datadir',
-                                 tor_new_circuit_period: 120,
-                                 max_tor_memory_usage_mb: 400,
-                                 max_tor_cpu_percentage: 15,
-                                 control_password: 'mycontrolpass',
-                                 eye_logging: true,
-                                 tor_logging: true
-    tor_process.start
+tor_process = 
+  TorManager::TorProcess.new tor_port: 9051, 
+                                                      control_port: 50501, 
+                                                      pid_dir: '/my/pid/dir',
+                                                      log_dir: '/my/log/dir',
+                                                      tor_data_dir: '/my/tor/datadir',
+                                                      tor_new_circuit_period: 120,
+                                                      max_tor_memory_usage_mb: 400,
+                                                      max_tor_cpu_percentage: 15,
+                                                      control_password: 'mycontrolpass',
+                                                      eye_logging: true,
+                                                      tor_logging: true
+tor_process.start
 ```
 
 See the table below for more info.	
 	
 When done with the Tor process, `stop` it: 
 
-    tor_process.stop 
+```ruby
+tor_process.stop 
+```
 	
-The following table describes the `TorManager::TorProcess` parameters:
+The following table describes the ```ruby TorManager::TorProcess``` parameters:
 	
 | Parameter | Default Value | Description |
 | --- | --- | --- |
