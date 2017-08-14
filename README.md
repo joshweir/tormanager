@@ -55,6 +55,7 @@ More information can be found in the `TorManager::TorProcess` parameters table b
 
 You can also spawn a Tor process with control over parameters:
 
+```ruby
     tor_process = 
 	  TorManager::TorProcess.new tor_port: 9051, 
 	                             control_port: 50501, 
@@ -68,6 +69,7 @@ You can also spawn a Tor process with control over parameters:
                                  eye_logging: true,
                                  tor_logging: true
     tor_process.start
+```
 
 See the table below for more info.	
 	
