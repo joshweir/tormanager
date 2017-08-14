@@ -105,19 +105,19 @@ The following table describes the `TorManager::TorProcess` parameters:
 To stop any Tor instances that have been previously started by Tor Manager but were not stopped (say in the event of a parent process crash) **_††_**: 
 
 ```ruby
-TorProcess.stop_obsolete_processes 
+TorManager::TorProcess.stop_obsolete_processes 
 ```
 	
 Query whether Tor Manager has any Tor processes running on a particular port **_††_**: 
 
 ```ruby
-TorProcess.tor_running_on? port: 9050 
+TorManager::TorProcess.tor_running_on? port: 9050 
 ```
 
 Query whether Tor Manager has any Tor processes running on a particular port associated to a particular parent ruby pid **_††_**:
 
 ```ruby
-TorProcess.tor_running_on? port: 9050, parent_pid: 12345
+TorManager::TorProcess.tor_running_on? port: 9050, parent_pid: 12345
 ```
 
 **_††_** Note that this command applies only to Tor processes that were started by Tor Manager. 
