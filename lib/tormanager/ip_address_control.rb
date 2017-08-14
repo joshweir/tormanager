@@ -1,4 +1,3 @@
-require 'tor'
 require 'rest-client'
 
 module TorManager

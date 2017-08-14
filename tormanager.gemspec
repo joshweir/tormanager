@@ -25,9 +25,9 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "rspec", "~> 3.0"
   spec.add_development_dependency "rspec-rails", "~> 3.5"
+  spec.add_development_dependency "gem-release"
   spec.add_dependency "rest-client"
   spec.add_dependency "eye"
   spec.add_dependency "eyemanager"
-  spec.add_dependency "gem-release"
   spec.add_dependency "socksify"
 end
