@@ -56,8 +56,17 @@ More information can be found in the `TorManager::TorProcess` parameters table b
 You can also spawn a Tor process with control over parameters:
 
     tor_process = 
-	  TorManager::TorProcess.new tor_port: 9051, control_port: 50501, 
-						pid_dir: 
+	  TorManager::TorProcess.new tor_port: 9051, 
+	                             control_port: 50501, 
+						         pid_dir: '/my/pid/dir',
+						         log_dir: '/my/log/dir',
+						         tor_data_dir: '/my/tor/datadir',
+						         tor_new_circuit_period: 120,
+						         max_tor_memory_usage_mb: 400,
+						         max_tor_cpu_percentage: 15,
+						         control_password: 'mycontrolpass',
+						         eye_logging: true,
+						         tor_logging: true
     tor_process.start
 
 See the table below for more info.	
