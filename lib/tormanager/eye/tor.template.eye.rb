@@ -12,7 +12,7 @@ Eye.application 'tormanager-tor-[[[tor_port]]]-[[[parent_pid]]]' do
   check :cpu, every: 30.seconds, below: [[[max_tor_cpu_percentage]]], times: 3
   check :memory, every: 60.seconds, below: [[[max_tor_memory_usage_mb]]].megabytes, times: 3
   process :tor do
-    pid_file File.join('[[[log_dir]]]', 'tormanager-tor-[[[tor_port]]]-[[[parent_pid]]].pid')
+    pid_file File.join('[[[pid_dir]]]', 'tormanager-tor-[[[tor_port]]]-[[[parent_pid]]].pid')
     start_command "tor --SocksPort [[[tor_port]]] --ControlPort [[[control_port]]] " +
                       "--CookieAuthentication 0 --HashedControlPassword \"[[[hashed_control_password]]]\" --NewCircuitPeriod " +
                       "[[[tor_new_circuit_period]]] " +
