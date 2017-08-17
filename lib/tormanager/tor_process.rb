@@ -118,12 +118,6 @@ module TorManager
       start_tor_and_monitor
     end
 
-    #def build_eye_config_from_template
-    #  File.open(eye_config_filename, "w") do |file|
-    #    file.puts read_eye_tor_config_template_and_substitute_keywords
-    #  end
-    #end
-
     def eye_config_filename
       @eye_config_filename || File.join(@settings[:log_dir],
                 "tormanager.tor.#{@settings[:tor_port]}.#{Process.pid}.eye.rb")
@@ -132,23 +126,6 @@ module TorManager
     def eye_app_name
       @eye_app_name || "tormanager-tor-#{@settings[:tor_port]}-#{Process.pid}"
     end
-
-    #def read_eye_tor_config_template_and_substitute_keywords
-    #  text = File.read(@settings[:eye_tor_config_template])
-    #  eye_tor_config_template_substitution_keywords.each do |keyword|
-    #    text = text.gsub(/\[\[\[#{keyword}\]\]\]/, @settings[keyword.to_sym].to_s)
-    #  end
-    #  text
-    #end
-
-    #def eye_tor_config_template_substitution_keywords
-    #  remove_settings_that_are_not_eye_tor_config_template_keywords(
-    #      @settings.keys.map(&:to_s))
-    #end
-
-    #def remove_settings_that_are_not_eye_tor_config_template_keywords keywords
-    #  keywords - ['eye_tor_config_template', 'control_password', 'dont_remove_tor_config']
-    #end
 
     def make_dirs
       [@settings[:log_dir], @settings[:pid_dir],
@@ -183,7 +160,8 @@ module TorManager
             process: 'tor')
         break if ['unknown','unmonitored'].include?(tor_status)
         sleep 2
-        raise "Tor didnt stop after 20 seconds! Last status: #{tor_status} See log: " +
+        raise TorFailedToStop,
+              "Tor didnt stop after 20 seconds! Last status: #{tor_status} See log: " +
                   "#{File.join(@settings[:log_dir],
                                eye_app_name + ".log")}" if i >= 9
       end

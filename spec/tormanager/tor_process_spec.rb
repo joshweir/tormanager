@@ -2,15 +2,7 @@ require "spec_helper"
 
 module TorManager
   describe TorProcess do
-    after :all do
-      EyeManager.destroy
-    end
-
     context 'when initialized with default params' do
-      #before :all do
-      #  @tp = TorProcess.new
-      #end
-
       it "initializes with default parameters" do
         expect(subject.settings[:tor_port]).to eq 9050
         expect(subject.settings[:control_port]).to eq 50500
@@ -38,132 +30,131 @@ module TorManager
         expect(subject.settings[:hashed_control_password][0..2])
             .to eq '16:'
       end
-
-      describe "#start" do
-        it "validates that the tor control port is open" do
-          allow(ProcessHelper).to receive(:port_is_open?).with(50700).and_return(false)
-          allow(ProcessHelper).to receive(:port_is_open?).with(52700).and_return(true)
-          expect{TorProcess.new(tor_port: 52700,
-                                       control_port: 50700).start}
-              .to raise_error(TorManager::TorControlPortInUse)
-        end
-
-        it "validates that the tor port is open" do
-          allow(ProcessHelper).to receive(:port_is_open?).with(9250).and_return(false)
-          allow(ProcessHelper).to receive(:port_is_open?).with(53700).and_return(true)
-          expect{TorProcess.new(tor_port: 9250,
-                                control_port: 53700).start}
-              .to raise_error(TorManager::TorPortInUse)
-        end
-
-        context 'when tor port and control port is open' do
-=begin
-          before :all do
-            EyeManager.destroy
-            @tp.start
-          end
-
-          after :all do
-            @tp.stop
-          end
-=end
-
-          it "creates a Tor eye config, starts Tor and verifies Tor is up" do
-            expect_eye_config_to_be_created_with_default_settings
-            expect_eye_manager_to_start_with_default_settings
-            expect_eye_manager_to_report_tor_is_up
-            subject.start
-          end
-
-          it "throws exception if Tor does not come up" do
-            expect_eye_config_to_be_created_with_default_settings
-            expect_eye_manager_to_start_with_default_settings
-            expect_eye_manager_to_report_tor_is_not_up
-            expect{subject.start}
-                .to raise_error(TorManager::TorFailedToStart,
-                                /Tor didnt start up after 20 seconds! See log: \/tmp\/tormanager-tor-\d+-\d+.log/)
-          end
-
-          it "starts tor using the created tor eye config file" do
-            expect(tor_process_status(@tp.settings)).to eq "up"
-            expect(tor_process_listing(@tp.settings))
-                .to match /HashedControlPassword 16:/
-          end
-
-          it "does not do any tor logging or eye logging" do
-            expect(File.exists?(
-                "/tmp/tormanager-tor-#{@tp.settings[:tor_port]}-#{@tp.settings[:parent_pid]}.log"))
-                .to be_falsey
-            expect(File.exists?("/tmp/tormanager.eye.log"))
-                .to be_falsey
-          end
-        end
-      end
     end
 
     context 'when initialized with user params' do
-      before :all do
-        @tp = TorProcess.new control_password: 'test_password',
-                                     tor_port: 9350,
-                                     control_port: 53700,
-                                     tor_logging: true,
-                                     eye_logging: true,
-                                     tor_data_dir: '/tmp/tor_data',
-                                     tor_log_switch: 'notice syslog'
+      let(:subject) {
+        TorProcess.new control_password: 'test_password',
+                       tor_port: 9350,
+                       control_port: 53700,
+                       tor_logging: true,
+                       eye_logging: true,
+                       tor_data_dir: '/tmp/tor_data',
+                       tor_log_switch: 'notice syslog'
+      }
+
+      it "initializes with user parameters" do
+        expect(subject.settings[:tor_port]).to eq 9350
+        expect(subject.settings[:control_port]).to eq 53700
+        expect(subject.settings[:tor_data_dir]).to eq '/tmp/tor_data'
+        expect(subject.settings[:tor_log_switch]).to eq 'notice syslog'
+        expect(subject.settings[:tor_logging]).to be_truthy
+        expect(subject.settings[:eye_logging]).to be_truthy
       end
 
       it "should generate a hashed_control_password based on user specified control_password" do
-        expect(@tp.settings[:control_password]).to eq 'test_password'
-        expect(@tp.settings[:hashed_control_password][0..2])
+        expect(subject.settings[:control_password]).to eq 'test_password'
+        expect(subject.settings[:hashed_control_password][0..2])
             .to eq '16:'
       end
+    end
 
-      describe "#start" do
-        after :all do
-          EyeManager.destroy
+    describe "#start" do
+      it "validates that the tor control port is open" do
+        allow(ProcessHelper).to receive(:port_is_open?).with(50700).and_return(false)
+        allow(ProcessHelper).to receive(:port_is_open?).with(52700).and_return(true)
+        expect{TorProcess.new(tor_port: 52700,
+                              control_port: 50700).start}
+            .to raise_error(TorManager::TorControlPortInUse)
+      end
+
+      it "validates that the tor port is open" do
+        allow(ProcessHelper).to receive(:port_is_open?).with(9250).and_return(false)
+        allow(ProcessHelper).to receive(:port_is_open?).with(53700).and_return(true)
+        expect{TorProcess.new(tor_port: 9250,
+                              control_port: 53700).start}
+            .to raise_error(TorManager::TorPortInUse)
+      end
+
+      context 'when initialized with default params' do
+        it "creates a Tor eye config, starts Tor and verifies Tor is up" do
+          allow_tor_ports_to_be_open subject.settings
+          expect_eye_config_to_be_created_with subject.settings
+          expect_eye_manager_to_issue_start_with subject.settings
+          expect_eye_manager_to_report_tor_is_up subject.settings
+          subject.start
         end
 
+        it "throws exception if Tor does not come up after timeout" do
+          allow_tor_ports_to_be_open subject.settings
+          expect_eye_config_to_be_created_with subject.settings
+          expect_eye_manager_to_issue_start_with subject.settings
+          expect_eye_manager_to_report_tor_is_not_up subject.settings
+          expect{subject.start}
+              .to raise_error(TorManager::TorFailedToStart,
+                              /Tor didnt start up after 20 seconds! See log: \/tmp\/tormanager-tor-\d+-\d+.log/)
+        end
+      end
+
+      context 'when initialized with user params' do
+        let(:subject) {
+          TorProcess.new control_password: 'test_password',
+                         tor_port: 9350,
+                         control_port: 53700,
+                         tor_logging: true,
+                         eye_logging: true,
+                         tor_data_dir: '/tmp/tor_data',
+                         tor_log_switch: 'notice syslog'
+        }
+
         context 'when spawning the tor process' do
-          before :all do
-            EyeManager.destroy
-            cleanup_related_files @tp.settings
-            @tp.start
-          end
-
-          after :all do
-            @tp.stop
-          end
-
-          it "creates a tor eye config file for the current Tor instance settings" do
-            expect(read_tor_process_manager_config(@tp.settings))
-                .to match(/tor --SocksPort #{@tp.settings[:tor_port]}/)
-          end
-
-          it "does tor logging when tor_logging is true" do
-            expect(tor_process_status(@tp.settings)).to eq "up"
-            expect(File.exists?(
-                "/tmp/tormanager-tor-#{@tp.settings[:tor_port]}-#{@tp.settings[:parent_pid]}.log"))
-                .to be_truthy
-          end
-
-          it "does eye logging when eye_logging is true" do
-            expect(File.exists?("/tmp/tormanager.eye.log"))
-                .to be_truthy
-          end
-
-          it "uses the :tor_data_dir if passed as input" do
-            expect(tor_process_listing(@tp.settings))
-                .to match /DataDirectory \/tmp\/tor_data\/9350/
-          end
-
-          it "uses the :tor_log_switch if passed as input" do
-            expect(tor_process_listing(@tp.settings))
-                .to match /Log notice syslog/
+          it "creates a Tor eye config, starts Tor and verifies Tor is up" do
+            allow_tor_ports_to_be_open subject.settings
+            expect_eye_config_to_be_created_with subject.settings
+            expect_eye_manager_to_issue_start_with subject.settings
+            expect_eye_manager_to_report_tor_is_up subject.settings
+            subject.start
           end
         end
       end
     end
 
+    describe "#stop" do
+      context 'when initialized with default params' do
+        it 'issues EyeManager stop orders' do
+          expect_eye_manager_to_issue_stop_with subject.settings
+          expect_eye_manager_to_report_tor_is 'unmonitored', subject.settings
+          subject.stop
+        end
+
+        it 'checks that tor is stopped through Eye status: unmonitored' do
+          expect_eye_manager_to_issue_stop_with subject.settings
+          expect_eye_manager_to_report_tor_is 'unmonitored', subject.settings
+          subject.stop
+        end
+
+        it 'checks that tor is stopped through Eye status: unknown' do
+          expect_eye_manager_to_issue_stop_with subject.settings
+          expect_eye_manager_to_report_tor_is 'unknown', subject.settings
+          subject.stop
+        end
+
+        it 'throws exception if Tor does not stop after timeout' do
+          expect_eye_manager_to_issue_stop_with subject.settings
+          expect_eye_manager_to_report_tor_is_not_down subject.settings
+          expect{subject.stop}
+            .to raise_error(TorManager::TorFailedToStop,
+                            /Tor didnt stop after 20 seconds! Last status: up See log: \/tmp\/tormanager-tor-\d+-\d+.log/)
+        end
+
+        context 'when initialized with param :dont_remove_tor_config '
+      end
+    end
+
+
+
+
+=begin
     describe "#stop" do
       before :all do
         @tp = TorProcess.new
@@ -261,63 +252,104 @@ module TorManager
         @tp.stop
       end
     end
-
-    def expect_eye_config_to_be_created_with_default_settings
+=end
+    def expect_eye_config_to_be_created_with settings
       eye_config = double("eye_config")
       expect(CreateEyeConfig)
           .to receive(:new)
-                  .with(:tor_port=>9050,
-                        :control_port=>50500,
-                        :pid_dir=>"/tmp",
-                        :log_dir=>"/tmp",
-                        :tor_data_dir=>nil,
-                        :tor_new_circuit_period=>60,
-                        :max_tor_memory_usage_mb=>200,
-                        :max_tor_cpu_percentage=>10,
-                        :eye_tor_config_template=>
-                            "/home/resrev/tormanager/lib/tormanager/eye/tor.template.eye.rb",
-                        :parent_pid=>19770,
-                        :control_password=>subject.settings[:control_password],
-                        :hashed_control_password=>subject.settings[:hashed_control_password],
-                        :tor_log_switch=>nil,
-                        :eye_logging=>nil,
-                        :tor_logging=>nil,
-                        :parent_pid=>Process.pid,
-                        :dont_remove_tor_config=>nil,
-                        :eye_tor_config_path=>"/tmp/tormanager.tor.9050.#{Process.pid}.eye.rb")
+                  .with(:tor_port=>settings[:tor_port],
+                        :control_port=>settings[:control_port],
+                        :pid_dir=>settings[:pid_dir],
+                        :log_dir=>settings[:log_dir],
+                        :tor_data_dir=>settings[:tor_data_dir],
+                        :tor_new_circuit_period=>settings[:tor_new_circuit_period],
+                        :max_tor_memory_usage_mb=>settings[:max_tor_memory_usage_mb],
+                        :max_tor_cpu_percentage=>settings[:max_tor_cpu_percentage],
+                        :eye_tor_config_template=>settings[:eye_tor_config_template],
+                        :parent_pid=>settings[:parent_pid],
+                        :control_password=>settings[:control_password],
+                        :hashed_control_password=>settings[:hashed_control_password],
+                        :tor_log_switch=>settings[:tor_log_switch],
+                        :eye_logging=>settings[:eye_logging],
+                        :tor_logging=>settings[:tor_logging],
+                        :dont_remove_tor_config=>settings[:dont_remove_tor_config],
+                        :eye_tor_config_path=>eye_config_path(settings))
                   .and_return(eye_config)
       expect(eye_config).to receive(:create)
     end
 
-    def expect_eye_manager_to_start_with_default_settings
+    def expect_eye_manager_to_issue_start_with settings
       expect(EyeManager)
         .to receive(:start)
-                 .with(config: "/tmp/tormanager.tor.9050.#{Process.pid}.eye.rb",
-                        application: default_eye_app_name)
+              .with(config: "/tmp/tormanager.tor" +
+                      ".#{settings[:tor_port]}.#{settings[:parent_pid]}.eye.rb",
+                    application: eye_app_name(settings))
     end
 
-    def expect_eye_manager_to_report_tor_is_up
+    def expect_eye_manager_to_issue_stop_with settings
+      expect(EyeManager)
+          .to receive(:stop)
+                .with(application: eye_app_name(settings),
+                      process: 'tor')
+    end
+
+    def expect_eye_manager_to_report_tor_is_up settings
       allow(subject).to receive(:sleep)
       expect(EyeManager)
         .to receive(:status)
-                .with(application: default_eye_app_name,
+                .with(application: eye_app_name(settings),
                       process: 'tor')
                 .and_return('down','down','down','down','down',
                             'down','down','down','down','up')
     end
 
-    def expect_eye_manager_to_report_tor_is_not_up
+    def expect_eye_manager_to_report_tor_is_not_up settings
       allow(subject).to receive(:sleep)
       expect(EyeManager)
           .to receive(:status)
-                  .with(application: default_eye_app_name,
+                  .with(application: eye_app_name(settings),
                         process: 'tor')
                   .and_return('down','down','down','down','down',
                               'down','down','down','down','down')
     end
 
-    def default_eye_app_name
-      "tormanager-tor-9050-#{Process.pid}"
+    def expect_eye_manager_to_report_tor_is down_status, settings
+      allow(subject).to receive(:sleep)
+      expect(EyeManager)
+          .to receive(:status)
+                .with(application: eye_app_name(settings),
+                      process: 'tor')
+                .and_return('up','up','up','up','up',
+                            'up','up','up','up',down_status)
+    end
+
+    def expect_eye_manager_to_report_tor_is_not_down settings
+      allow(subject).to receive(:sleep)
+      expect(EyeManager)
+          .to receive(:status)
+                  .with(application: eye_app_name(settings),
+                        process: 'tor')
+                  .and_return('up','up','up','up','up',
+                              'up','up','up','up','up')
+    end
+
+    def eye_app_name settings
+      "tormanager-tor-#{settings[:tor_port]}-#{settings[:parent_pid]}"
+    end
+
+    def eye_config_path settings
+      File.join(
+          settings[:log_dir],
+          "tormanager.tor.#{settings[:tor_port]}.#{settings[:parent_pid]}.eye.rb")
+    end
+
+    def allow_tor_ports_to_be_open settings
+      allow(ProcessHelper)
+        .to receive(:port_is_open?)
+              .with(settings[:tor_port]).and_return(true)
+      allow(ProcessHelper)
+          .to receive(:port_is_open?)
+                  .with(settings[:control_port]).and_return(true)
     end
   end
 end
