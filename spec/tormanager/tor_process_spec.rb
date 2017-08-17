@@ -107,14 +107,12 @@ module TorManager
                          tor_log_switch: 'notice syslog'
         }
 
-        context 'when spawning the tor process' do
-          it "creates a Tor eye config, starts Tor and verifies Tor is up" do
-            allow_tor_ports_to_be_open subject.settings
-            expect_eye_config_to_be_created_with subject.settings
-            expect_eye_manager_to_issue_start_with subject.settings
-            expect_eye_manager_to_report_tor_is_up subject.settings
-            subject.start
-          end
+        it "creates a Tor eye config, starts Tor and verifies Tor is up" do
+          allow_tor_ports_to_be_open subject.settings
+          expect_eye_config_to_be_created_with subject.settings
+          expect_eye_manager_to_issue_start_with subject.settings
+          expect_eye_manager_to_report_tor_is_up subject.settings
+          subject.start
         end
       end
     end
@@ -124,6 +122,24 @@ module TorManager
         it 'issues EyeManager stop orders' do
           expect_eye_manager_to_issue_stop_with subject.settings
           expect_eye_manager_to_report_tor_is 'unmonitored', subject.settings
+          subject.stop
+        end
+
+        it 'deletes the eye tor config file if it exists' do
+          expect_eye_manager_to_issue_stop_with subject.settings
+          expect_eye_manager_to_report_tor_is 'unmonitored', subject.settings
+          eye_config = eye_config_path(subject.settings)
+          allow(File).to receive(:exists?).with(eye_config).and_return(true)
+          expect(File).to receive(:delete).with(eye_config)
+          subject.stop
+        end
+
+        it 'doesnt try to delete the config file if it does not exist' do
+          expect_eye_manager_to_issue_stop_with subject.settings
+          expect_eye_manager_to_report_tor_is 'unmonitored', subject.settings
+          eye_config = eye_config_path(subject.settings)
+          allow(File).to receive(:exists?).with(eye_config).and_return(false)
+          expect(File).to_not receive(:delete)
           subject.stop
         end
 
@@ -146,113 +162,112 @@ module TorManager
             .to raise_error(TorManager::TorFailedToStop,
                             /Tor didnt stop after 20 seconds! Last status: up See log: \/tmp\/tormanager-tor-\d+-\d+.log/)
         end
-
-        context 'when initialized with param :dont_remove_tor_config '
-      end
-    end
-
-
-
-
-=begin
-    describe "#stop" do
-      before :all do
-        @tp = TorProcess.new
-        @tp_keep_config = TorProcess.new dont_remove_tor_config: true,
-                                                 tor_port: 9450,
-                                                 control_port: 53500
-        cleanup_related_files @tp.settings
-        cleanup_related_files @tp_keep_config.settings
       end
 
-      after :all do
-        EyeManager.destroy
+      context 'when initialized with different tor and control port' do
+        let(:subject) {
+          TorProcess.new tor_port: 9350,
+                         control_port: 53700
+        }
+
+        it 'it stops the Tor process the same as would with default params' do
+          expect_eye_manager_to_issue_stop_with subject.settings
+          expect_eye_manager_to_report_tor_is 'unmonitored', subject.settings
+          subject.stop
+        end
       end
 
-      it "stops the tor process" do
-        @tp.start
-        expect(tor_process_status(@tp.settings)).to eq "up"
-        @tp.stop
-        expect(tor_process_status(@tp.settings)).to_not match /up|starting/
-      end
+      context 'when initialized with :dont_remove_tor_config = true' do
+        let(:subject) {
+          TorProcess.new dont_remove_tor_config: true
+        }
 
-      it "removes the eye tor config" do
-        expect(File.exists?("/tmp/tormanager.tor.#{@tp.settings[:tor_port]}." +
-                                "#{@tp_keep_config.settings[:parent_pid]}.eye.rb"))
-            .to be_falsey
-      end
-
-      it "leaves the eye tor config if setting :dont_remove_tor_config is true" do
-        @tp_keep_config.start
-        @tp_keep_config.stop
-        expect(File.exists?("/tmp/tormanager.tor.#{@tp_keep_config.settings[:tor_port]}." +
-                                "#{@tp_keep_config.settings[:parent_pid]}.eye.rb"))
-            .to be_truthy
+        it 'does not delete the eye tor config file' do
+          expect_eye_manager_to_issue_stop_with subject.settings
+          expect_eye_manager_to_report_tor_is 'unmonitored', subject.settings
+          expect(File).to_not receive(:exists?)
+          expect(File).to_not receive(:delete)
+          subject.stop
+        end
       end
     end
 
     describe ".stop_obsolete_processes" do
-      let(:tpm) { TorProcess.new }
-
-      before do
-        cleanup_related_files tpm.settings
+      context "when there are tor processes being monitored by Eye" do
+        it 'will issue EyeManager.stop if the tor process is running' do
+          allow(EyeManager)
+            .to receive(:list_apps)
+                  .and_return(
+                    %w(tormanager-tor-9050-1 tormanager-tor-9050-2))
+          #simulate that only the first tor process is running
+          allow(ProcessHelper)
+            .to receive(:process_pid_running?).and_return(true, false)
+          expect(EyeManager)
+            .to_not receive(:stop).with(application: "tormanager-tor-9050-1",
+                                        process: "tor")
+          expect(EyeManager)
+            .to receive(:stop).with(application: "tormanager-tor-9050-2",
+                                    process: "tor")
+          TorProcess.stop_obsolete_processes
+        end
       end
 
-      after do
-        EyeManager.destroy
-      end
-
-      it "checks if any Tor eye processes " +
-             "are running associated to TorManager instances that no longer exist " +
-             "then issue eye stop orders and kill the eye process as it is stale" do
-        #add dummy process to act as obsolete
-        EyeManager.start config: 'spec/tormanager/eye.test.rb',
-                         application: 'tormanager-tor-9450-12345'
-        tpm.start
-        expect(tor_process_status(tpm.settings)).to eq "up"
-        expect(tor_process_status(tor_port: 9450, parent_pid: 12345)).to eq "up"
-        TorProcess.stop_obsolete_processes
-        expect(tor_process_status(tpm.settings)).to eq "up"
-        expect(tor_process_status(tor_port: 9450, parent_pid: 12345)).to_not match /up|starting/
+      context "when there are no tor processes being monitored by Eye" do
+        it "does not proceed to check any EyeManager processes" do
+          allow(EyeManager).to receive(:list_apps).and_return(nil)
+          expect(ProcessHelper).to_not receive(:process_pid_running?)
+          expect(EyeManager).to_not receive(:stop)
+          TorProcess.stop_obsolete_processes
+        end
       end
     end
 
     describe ".tor_running_on?" do
-      before :all do
-        @tp = TorProcess.new
-        cleanup_related_files @tp.settings
+      context "when there are tor processes being monitored by Eye" do
+        it "is true if Tor is running on port" do
+          setup_tor_running_on_example
+          expect(TorProcess.tor_running_on?(port: 9050)).to be_truthy
+        end
+
+        it "is false if Tor is not running on port" do
+          setup_tor_running_on_example
+          expect(TorProcess.tor_running_on?(port: 9051)).to be_falsey
+          expect(TorProcess.tor_running_on?(port: 9052)).to be_falsey
+        end
+
+        it "is true if checking port and parent pid and both match" do
+          setup_tor_running_on_example
+          expect(TorProcess.tor_running_on?(port: 9050,
+                                            parent_pid: 2)).to be_truthy
+        end
+
+        it "is false if port matches but parent pid does not" do
+          setup_tor_running_on_example
+          expect(TorProcess.tor_running_on?(port: 9050,
+                                            parent_pid: 1)).to be_falsey
+        end
+
+        it "is true if parent pid matches" do
+          setup_tor_running_on_example
+          expect(TorProcess.tor_running_on?(parent_pid: 2)).to be_truthy
+        end
+
+        it "is false if called with no :port or :parent_pid" do
+          setup_tor_running_on_example
+          expect(TorProcess.tor_running_on?).to be_falsey
+        end
       end
 
-      after :all do
-        EyeManager.destroy
-      end
-
-      it "is true if Tor is running on port" do
-        @tp.start
-        expect(tor_process_status(@tp.settings)).to eq "up"
-        expect(TorProcess.tor_running_on?(port: @tp.settings[:tor_port]))
-            .to be_truthy
-        @tp.stop
-      end
-
-      it "is not true if Tor is not running on port" do
-        expect(TorProcess.tor_running_on?(port: @tp.settings[:tor_port]))
-            .to be_falsey
-      end
-
-      it "is true if Tor is running on port and current pid is tor parent_pid" do
-        @tp.start
-        expect(tor_process_status(@tp.settings)).to eq "up"
-        expect(TorProcess.tor_running_on?(port: @tp.settings[:tor_port],
-                      parent_pid: @tp.settings[:parent_pid]))
-            .to be_truthy
-        expect(TorProcess.tor_running_on?(port: @tp.settings[:tor_port],
-                                                 parent_pid: @tp.settings[:parent_pid] + 1))
-            .to be_falsey
-        @tp.stop
+      context "when there are no tor processes being monitored by Eye" do
+        it "is false" do
+          allow(EyeManager).to receive(:list_apps).and_return(nil)
+          expect(EyeManager).to_not receive(:status)
+          expect(TorProcess.tor_running_on?(port: 9050))
+              .to be_falsey
+        end
       end
     end
-=end
+
     def expect_eye_config_to_be_created_with settings
       eye_config = double("eye_config")
       expect(CreateEyeConfig)
@@ -350,6 +365,21 @@ module TorManager
       allow(ProcessHelper)
           .to receive(:port_is_open?)
                   .with(settings[:control_port]).and_return(true)
+    end
+
+    def setup_tor_running_on_example
+      allow(EyeManager).to receive(:list_apps).and_return(
+          %w(tormanager-tor-9051-1 tormanager-tor-9050-2))
+      allow(EyeManager)
+          .to receive(:status)
+                  .with(application: "tormanager-tor-9051-1",
+                        process: 'tor')
+                  .and_return('unmonitored')
+      allow(EyeManager)
+          .to receive(:status)
+                  .with(application: "tormanager-tor-9050-2",
+                        process: 'tor')
+                  .and_return('up')
     end
   end
 end

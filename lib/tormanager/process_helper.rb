@@ -12,14 +12,14 @@ module TorManager
 
       def kill_process pids
         to_array(pids).each do |pid|
-          try_to_kill pid: pid, attempts: 5
+          try_to_kill pid: Integer(pid), attempts: 5
         end
       end
 
       def process_pid_running? pid
         begin
           return false if pid.to_s == ''.freeze
-          ipid = pid.to_i
+          ipid = Integer(pid)
           return false if ipid <= 0
           Process.kill(0, ipid)
           return true
