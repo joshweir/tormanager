@@ -1,6 +1,8 @@
 require 'rest-client'
 
 module TorManager
+  TorUnavailable = Class.new(StandardError)
+
   class IpAddressControl
     attr_accessor :ip
 
@@ -24,7 +26,7 @@ module TorManager
     private
 
     def ensure_tor_is_available
-      raise "Cannot proceed, Tor is not running on port " +
+      raise TorUnavailable, "Cannot proceed, Tor is not running on port " +
                 "#{@tor_process.settings[:tor_port]}" unless
           TorProcess.tor_running_on? port: @tor_process.settings[:tor_port],
               parent_pid: @tor_process.settings[:parent_pid]
@@ -70,7 +72,7 @@ module TorManager
 
     def tor_switch_endpoint
       Tor::Controller.connect(:port => @tor_process.settings[:control_port]) do |tor|
-        tor.authenticate("")
+        tor.authenticate(@tor_process.settings[:control_password])
         tor.signal("newnym")
         sleep 10
       end

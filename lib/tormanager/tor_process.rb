@@ -5,7 +5,6 @@ require 'securerandom'
 
 module TorManager
   Error = Class.new(StandardError)
-  TorControlPortInUse = Class.new(Error)
   TorPortInUse = Class.new(Error)
   TorControlPortInUse = Class.new(Error)
   TorFailedToStart = Class.new(Error)
