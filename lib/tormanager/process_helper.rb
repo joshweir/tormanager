@@ -1,6 +1,8 @@
 require 'socket'
 
 module TorManager
+  CannotKillProcess = Class.new(StandardError)
+
   class ProcessHelper
     class << self
       def query_process query
@@ -12,14 +14,14 @@ module TorManager
 
       def kill_process pids
         to_array(pids).each do |pid|
-          try_to_kill pid: pid, attempts: 5
+          try_to_kill pid: Integer(pid), attempts: 5
         end
       end
 
       def process_pid_running? pid
         begin
           return false if pid.to_s == ''.freeze
-          ipid = pid.to_i
+          ipid = Integer(pid)
           return false if ipid <= 0
           Process.kill(0, ipid)
           return true
@@ -63,12 +65,12 @@ module TorManager
       def try_to_kill params={}
         pid = params.fetch(:pid, nil)
         return unless pid && process_pid_running?(pid)
-        params.fetch(:attempts, 5).times do |k|
-          k < 3 ? Process.kill('TERM', pid) :
+        params.fetch(:attempts, 5).times do |i|
+          i < 3 ? Process.kill('TERM', pid) :
             Process.kill('KILL', pid)
           sleep 0.5
           break unless process_pid_running? pid
-          raise "Couldnt kill pid: #{pid}" if k >= 4
+          raise CannotKillProcess, "Couldnt kill pid: #{pid}" if i >= 4
         end
       end
     end

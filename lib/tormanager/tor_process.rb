@@ -4,6 +4,12 @@ require 'fileutils'
 require 'securerandom'
 
 module TorManager
+  Error = Class.new(StandardError)
+  TorPortInUse = Class.new(Error)
+  TorControlPortInUse = Class.new(Error)
+  TorFailedToStart = Class.new(Error)
+  TorFailedToStop = Class.new(Error)
+
   class TorProcess
     attr_accessor :settings
 
@@ -88,29 +94,27 @@ module TorManager
     end
 
     def tor_port_is_open?
-      raise "Cannot spawn Tor process as port " +
+      raise TorPortInUse, "Cannot spawn Tor process as port " +
                 "#{@settings[:tor_port]} is in use" unless
           ProcessHelper.port_is_open?(@settings[:tor_port])
       true
     end
 
     def control_port_is_open?
-      raise "Cannot spawn Tor process as control port " +
+      raise TorControlPortInUse, "Cannot spawn Tor process as control port " +
                 "#{@settings[:control_port]} is in use" unless
           ProcessHelper.port_is_open?(@settings[:control_port])
       true
     end
 
     def prepare_tor_start_and_monitor
-      build_eye_config_from_template
+      #build_eye_config_from_template
+      eye_config = CreateEyeConfig.new(
+          @settings.merge(
+              eye_tor_config_path: eye_config_filename))
+      eye_config.create
       make_dirs
       start_tor_and_monitor
-    end
-
-    def build_eye_config_from_template
-      File.open(eye_config_filename, "w") do |file|
-        file.puts read_eye_tor_config_template_and_substitute_keywords
-      end
     end
 
     def eye_config_filename
@@ -120,23 +124,6 @@ module TorManager
 
     def eye_app_name
       @eye_app_name || "tormanager-tor-#{@settings[:tor_port]}-#{Process.pid}"
-    end
-
-    def read_eye_tor_config_template_and_substitute_keywords
-      text = File.read(@settings[:eye_tor_config_template])
-      eye_tor_config_template_substitution_keywords.each do |keyword|
-        text = text.gsub(/\[\[\[#{keyword}\]\]\]/, @settings[keyword.to_sym].to_s)
-      end
-      text
-    end
-
-    def eye_tor_config_template_substitution_keywords
-      remove_settings_that_are_not_eye_tor_config_template_keywords(
-          @settings.keys.map(&:to_s))
-    end
-
-    def remove_settings_that_are_not_eye_tor_config_template_keywords keywords
-      keywords - ['eye_tor_config_template', 'control_password', 'dont_remove_tor_config']
     end
 
     def make_dirs
@@ -159,7 +146,7 @@ module TorManager
                 application: eye_app_name,
                 process: 'tor') == 'up'
         sleep 2
-        raise "Tor didnt start up after 20 seconds! See log: " +
+        raise TorFailedToStart, "Tor didnt start up after 20 seconds! See log: " +
                   "#{File.join(@settings[:log_dir],
                                eye_app_name + ".log")}" if i >= 9
       end
@@ -172,7 +159,8 @@ module TorManager
             process: 'tor')
         break if ['unknown','unmonitored'].include?(tor_status)
         sleep 2
-        raise "Tor didnt stop after 20 seconds! Last status: #{tor_status} See log: " +
+        raise TorFailedToStop,
+              "Tor didnt stop after 20 seconds! Last status: #{tor_status} See log: " +
                   "#{File.join(@settings[:log_dir],
                                eye_app_name + ".log")}" if i >= 9
       end

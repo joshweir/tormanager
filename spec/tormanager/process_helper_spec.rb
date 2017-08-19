@@ -2,128 +2,162 @@ require "spec_helper"
 
 module TorManager
   describe ProcessHelper do
-    after :all do
-      ProcessHelper.kill_process(
-          ProcessHelper.query_process ['test process','ruby'])
-    end
-
-    describe "::query_process" do
-      before :all do 
-        @pid1 = Process.spawn("ruby -e \"loop{puts 'test process 1'; sleep 5}\"")
-        Process.detach(@pid1)
-        @pid2 = Process.spawn("ruby -e \"loop{puts 'test process 2'; sleep 5}\"")
-        Process.detach(@pid2)
-        @pids = [@pid1, @pid2]
+    describe ".query_process" do
+      context "when param is empty" do
+        it "returns an empty array" do
+          expect(ProcessHelper.query_process(nil)).to eq []
+        end
       end
 
-      after :all do 
-        ProcessHelper.kill_process(
-            ProcessHelper.query_process ['test process','ruby'])
-      end
-      
-      context "param is a string (single query string)" do 
-        it "should find processes based on a query string" do 
+      context "when param is a string (single query string)" do
+        it "sends ps command to system with query term" do
+          expect(ProcessHelper)
+              .to receive(:`)
+                    .with("ps -ef | grep 'test process' | grep -v grep")
+                    .and_return("")
+          ProcessHelper.query_process('test process')
+        end
+
+        it "finds processes based on the query and returns the pids" do
+          allow(ProcessHelper)
+              .to receive(:`)
+                    .with("ps -ef | grep 'test process' | grep -v grep")
+                    .and_return(
+                      "usr   31924  2312  0 Aug14 pts/12   00:00:00 /bin/test process 1\n" +
+                      "usr   32021  2312  0 Aug14 pts/13   00:00:00 /usr/bin/test process 2")
           expect(ProcessHelper.query_process('test process'))
-            .to include(*@pids)
-          expect(ProcessHelper.query_process('test process 2'))
-            .to include(@pid2)
+              .to contain_exactly(31924, 32021)
         end
-        
-        it "should not find processes that do not exist" do 
-          expect(ProcessHelper.query_process('test process a'))
-            .to eq []
-        end 
-      end 
-      
-      context "param is an array (multiple query strings)" do 
-        it "should find processes based on a query strings" do 
-          expect(ProcessHelper.query_process(['test process','ruby','sh']))
-            .to contain_exactly(*@pids)
-          expect(ProcessHelper.query_process(['test process 2','ruby','sh']))
-            .to eq([@pid2])  
-        end
-        
-        it "should not find processes that do not exist" do 
-          expect(ProcessHelper.query_process(['test process','ruby -i','sh']))
-            .to eq []
-        end 
-      end 
-    end
 
-    describe "::process_pid_running?" do
-      it "should be true if pid is running" do
-        pid = Process.spawn("ruby -e \"loop{puts 'test process 1'; sleep 5}\"")
-        Process.detach(pid)
-        expect(ProcessHelper.process_pid_running?(pid))
-            .to be_truthy
-        ProcessHelper.kill_process ProcessHelper.query_process ['ruby', 'test process']
-      end
-
-      it "should not be true if pid is not running" do
-        expect(ProcessHelper.process_pid_running?(
-            spawn_and_kill_process_with_intention_that_pid_will_not_be_in_use_after))
-            .not_to be_truthy
-      end
-    end
-
-    describe "::kill_process" do
-      context "param is an array (multiple pids)" do
-        it "should kill multiple processes" do
-          pid1 = Process.spawn("ruby -e \"loop{puts 'test process 1'; sleep 5}\"")
-          Process.detach(pid1)
-          pid2 = Process.spawn("ruby -e \"loop{puts 'test process 2'; sleep 5}\"")
-          Process.detach(pid2)
-          pids = [pid1, pid2]
-          expect(ProcessHelper.process_pid_running?(pid1))
-            .to be_truthy
-          expect(ProcessHelper.process_pid_running?(pid2))
-              .to be_truthy
-          ProcessHelper.kill_process pids
-          expect(ProcessHelper.process_pid_running?(pid1))
-              .not_to be_truthy
-          expect(ProcessHelper.process_pid_running?(pid2))
-              .not_to be_truthy
+        it "finds a single processes based on the query and returns the pid" do
+          allow(ProcessHelper)
+              .to receive(:`)
+                      .with("ps -ef | grep 'test process' | grep -v grep")
+                      .and_return(
+                          "usr   31924  2312  0 Aug14 pts/12   00:00:00 /bin/test process 1\n")
+          expect(ProcessHelper.query_process('test process'))
+              .to contain_exactly(31924)
         end
       end
 
-      context "param is not an array (single pid)" do
-        it "should kill a process" do
-          pid = Process.spawn("ruby -e \"loop{puts 'test process 1'; sleep 5}\"")
-          Process.detach(pid)
-          expect(ProcessHelper.process_pid_running?(pid))
-              .to be_truthy
-          ProcessHelper.kill_process pid
-          expect(ProcessHelper.process_pid_running?(pid))
-              .not_to be_truthy
-        end
-
-        it "should be quiet if the process does not exist upon kill orders" do
-          expect{ProcessHelper.kill_process(
-              spawn_and_kill_process_with_intention_that_pid_will_not_be_in_use_after)}
-            .not_to raise_error
+      context "when param is an array (multiple query strings)" do
+        it "sends ps command to system with query terms piped" do
+          expect(ProcessHelper)
+              .to receive(:`)
+                      .with("ps -ef | grep 'test process' | " +
+                                "grep 'ruby' | grep 'sh' | grep -v grep")
+                      .and_return("")
+          ProcessHelper.query_process(['test process','ruby','sh'])
         end
       end
     end
 
-    describe "::port_is_open?" do 
-      it 'should be true if the port is open' do
-        tcp_server_50700 = TCPServer.new('127.0.0.1', 53700)
-        tcp_server_50700.close
-        expect(ProcessHelper.port_is_open?(53700)).to be_truthy
+    describe ".process_pid_running?" do
+      it "returns false if pid param is empty" do
+        expect(ProcessHelper.process_pid_running?(nil)).to be_falsey
+        expect(ProcessHelper.process_pid_running?('')).to be_falsey
       end
 
-      it 'should not be true if the port is not open' do
-        tcp_server_50700 = TCPServer.new('127.0.0.1', 53700)
-        expect(ProcessHelper.port_is_open?(53700)).to_not be_truthy
-        tcp_server_50700.close
+      it "returns false if pid param cannot be coerced into an integer" do
+        allow(Process).to receive(:kill)
+        expect(ProcessHelper.process_pid_running?('1a')).to be_falsey
+      end
+
+      it "returns true if Kernel.kill does not fail (meaning the process exists)" do
+        expect(Process).to receive(:kill).with(0, 10).exactly(2).times
+        expect(ProcessHelper.process_pid_running?('10')).to be_truthy
+        expect(ProcessHelper.process_pid_running?(10)).to be_truthy
+      end
+
+      it "returns false if Kernel.kill fails (meaning the process does not exist)" do
+        expect(Process).to receive(:kill).with(0, 10).and_raise(Error).exactly(2).times
+        expect(ProcessHelper.process_pid_running?('10')).to be_falsey
+        expect(ProcessHelper.process_pid_running?(10)).to be_falsey
       end
     end
 
-    def spawn_and_kill_process_with_intention_that_pid_will_not_be_in_use_after
-      pid = Process.spawn("ruby -e \"loop{puts 'test process'; sleep 5}\"")
-      Process.detach(pid)
-      ProcessHelper.kill_process ProcessHelper.query_process ['ruby', 'test process']
-      pid
+    describe ".kill_process" do
+      context "when param is an array (multiple pids)" do
+        it 'raises exception if a pid param cannot be coerced into an integer' do
+          allow(ProcessHelper).to receive(:sleep)
+          allow(ProcessHelper).to receive(:process_pid_running?)
+                                      .with(12345)
+                                      .and_return(true, true, true, true, true, false)
+          allow(Process).to receive(:kill)
+          expect{ProcessHelper.kill_process([12345, "10a"])}.to raise_error ArgumentError
+        end
+
+        it 'does not try to kill the process unless it is currently running' do
+          allow(ProcessHelper).to receive(:sleep)
+          allow(ProcessHelper).to receive(:process_pid_running?)
+                                      .with(12345)
+                                      .and_return(false)
+          allow(ProcessHelper).to receive(:process_pid_running?)
+                                      .with(12346)
+                                      .and_return(false)
+          expect(Process).to_not receive(:kill)
+          ProcessHelper.kill_process [12345, "12346"]
+        end
+
+        it 'tries to kill using SIGTERM up to 3 attempts, then SIGKILL for 2 more attempts' do
+          allow(ProcessHelper).to receive(:sleep)
+          allow(ProcessHelper).to receive(:process_pid_running?)
+                                      .with(12345)
+                                      .and_return(true, true, true, true, true, false)
+          allow(ProcessHelper).to receive(:process_pid_running?)
+                                      .with(12346)
+                                      .and_return(true, true, true, false)
+          expect(Process).to receive(:kill).with('TERM', 12345).exactly(3).times
+          expect(Process).to receive(:kill).with('KILL', 12345).exactly(2).times
+          expect(Process).to receive(:kill).with('TERM', 12346).exactly(3).times
+          ProcessHelper.kill_process [12345, "12346"]
+        end
+
+        it 'raises exception if fails to kill the process' do
+          allow(ProcessHelper).to receive(:sleep)
+          allow(ProcessHelper).to receive(:process_pid_running?)
+                                      .with(12345)
+                                      .and_return(true, true, true, true, true, true)
+          expect(Process).to receive(:kill).with('TERM', 12345).exactly(3).times
+          expect(Process).to receive(:kill).with('KILL', 12345).exactly(2).times
+          expect{ProcessHelper.kill_process [12345, "12346"]}
+              .to raise_error TorManager::CannotKillProcess,
+                              /Couldnt kill pid: 12345/
+        end
+      end
+
+      context "when param is not an array (single pid)" do
+        it "raises exception if a pid param cannot be coerced into an integer" do
+          allow(ProcessHelper).to receive(:sleep)
+          allow(Process).to receive(:kill)
+          expect{ProcessHelper.kill_process "10a"}.to raise_error ArgumentError
+        end
+
+        it "kills the process much the same as if the param was an array" do
+          allow(ProcessHelper).to receive(:sleep)
+          allow(ProcessHelper).to receive(:process_pid_running?)
+                                      .with(12345)
+                                      .and_return(true, true, true, true, true, false)
+          expect(Process).to receive(:kill).with('TERM', 12345).exactly(3).times
+          expect(Process).to receive(:kill).with('KILL', 12345).exactly(2).times
+          ProcessHelper.kill_process "12345"
+        end
+      end
+    end
+
+    describe ".port_is_open?" do
+      let(:server) { double }
+
+      it "is true when port is open (a TCPServer starts on said port)" do
+        allow(TCPServer).to receive(:new).with('127.0.0.1', 12345).and_return(server)
+        allow(server).to receive(:close)
+        expect(ProcessHelper.port_is_open?(12345)).to be_truthy
+      end
+
+      it "is false when port is not open (a TCPServer fails to start on said port)" do
+        allow(TCPServer).to receive(:new).with('127.0.0.1', 12345).and_raise(Errno::EADDRINUSE)
+        expect(ProcessHelper.port_is_open?(12345)).to be_falsey
+      end
     end
   end
 end
