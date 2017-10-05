@@ -11,8 +11,13 @@ The Tor Process is monitored using [Eye](https://github.com/kostya/eye).
 
 Install Tor: 
 
-`sudo apt-get install tor`
+    sudo apt-get install tor
 
+Install sigar: 
+
+    $ gem install sigar -- --with-cppflags="-fgnu89-inline"
+
+Then,
 Add this line to your application's Gemfile:
 
 ```ruby
