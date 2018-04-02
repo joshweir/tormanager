@@ -2,4 +2,7 @@ sudo: false
 language: ruby
 rvm:
   - 2.3.1
-before_install: gem install bundler -v 1.14.6
+#script: rspec --pattern spec/\*\*\{,/\*/\*\*\}/\*_spec.rb --exclude-pattern **/features/*_spec.rb
+before_install:
+  - gem install bundler -v 1.14.6
+  - gem install sigar -- --with-cppflags="-fgnu89-inline"

@@ -1,19 +1,21 @@
 # Tor Manager
 
-Ruby gem that provides a Tor interface with functionality: 
+[![Build Status](https://travis-ci.org/joshweir/tormanager.svg?branch=master)](https://travis-ci.org/joshweir/tormanager) [![Coverage Status](https://coveralls.io/repos/github/joshweir/tormanager/badge.svg?branch=master)](https://coveralls.io/github/joshweir/tormanager?branch=master)
 
-- Start and stop and monitor a Tor process. 
-The Tor Process is monitored using [Eye](https://github.com/kostya/eye). 
+Ruby gem that provides a Tor interface with functionality:
+
+- Start and stop and monitor a Tor process.
+The Tor Process is monitored using [Eye](https://github.com/kostya/eye).
 - Retrieve the current Tor IP address and get new ip address upon request.
 - Proxy web client requests through Tor.
 
 ## Installation
 
-Install Tor: 
+Install Tor:
 
     sudo apt-get install tor
 
-Install sigar: 
+Install sigar:
 
     $ gem install sigar -- --with-cppflags="-fgnu89-inline"
 
@@ -34,9 +36,9 @@ Or install it yourself as:
 
 ## Usage
 
-### Tor Process 
+### Tor Process
 
-This section shows how to start, stop and manage Tor processes. 
+This section shows how to start, stop and manage Tor processes.
 
 Start a Tor process with default settings:
 
@@ -46,28 +48,28 @@ require 'tormanager'
 tor_process = TorManager::TorProcess.new
 tor_process.start
 
-#you can get the control password for the Tor process if you want: 
+#you can get the control password for the Tor process if you want:
 tor_process.settings[:control_password]
 ```
 
 By default, the Tor process will use using port `9050` and control port `50500` and
-will be spawned using [Eye](https://github.com/kostya/eye) ensuring that the process remains in a healthy state. 
-Eye will generate a config file based on the default [template](https://github.com/joshweir/tormanager/blob/master/lib/tormanager/eye/tor.template.eye.rb). 
+will be spawned using [Eye](https://github.com/kostya/eye) ensuring that the process remains in a healthy state.
+Eye will generate a config file based on the default [template](https://github.com/joshweir/tormanager/blob/master/lib/tormanager/eye/tor.template.eye.rb).
 Eye will invoke the Tor process with command which looks like this:
 
     tor --SocksPort 9050 --ControlPort 50500 --CookieAuthentication 0 --HashedControlPassword "<hashedpassword from the :control_password>" --NewCircuitPeriod 60
 
-Eye will restart the Tor process if a cpu percentage exceeds 10% for 3 consecutive readings (checked every 30 seconds). Eye will 
-restart the Tor process if its memory exceeds 200MB for 3 consecutive readings (checked every 60 seconds). By default, will do minimal logging and 
-will create a random `:control_password` which is used to generate the `HashedControlPassword` used to change the Tor password on request. 
+Eye will restart the Tor process if a cpu percentage exceeds 10% for 3 consecutive readings (checked every 30 seconds). Eye will
+restart the Tor process if its memory exceeds 200MB for 3 consecutive readings (checked every 60 seconds). By default, will do minimal logging and
+will create a random `:control_password` which is used to generate the `HashedControlPassword` used to change the Tor password on request.
 More information can be found in the `TorManager::TorProcess` parameters table below.
 
 You can also spawn a Tor process with control over parameters:
 
 ```ruby
-tor_process = 
-  TorManager::TorProcess.new tor_port: 9051, 
-                             control_port: 50501, 
+tor_process =
+  TorManager::TorProcess.new tor_port: 9051,
+                             control_port: 50501,
                              pid_dir: '/my/pid/dir',
                              log_dir: '/my/log/dir',
                              tor_data_dir: '/my/tor/datadir',
@@ -80,16 +82,16 @@ tor_process =
 tor_process.start
 ```
 
-See the table below for more info.	
-	
-When done with the Tor process, `stop` it: 
+See the table below for more info.
+
+When done with the Tor process, `stop` it:
 
 ```ruby
-tor_process.stop 
+tor_process.stop
 ```
-	
+
 The following table describes the `TorManager::TorProcess` parameters:
-	
+
 | Parameter | Default Value | Description |
 | --- | --- | --- |
 | `:tor_port` | `9050` | The listening port of the Tor process. |
@@ -109,16 +111,16 @@ The following table describes the `TorManager::TorProcess` parameters:
 
 **_†_** where `<tor_port>` is the `:tor_port` of the Tor process and `<parent_pid>` is the pid of the ruby process spawning the Tor process.
 
-To stop any Tor instances that have been previously started by Tor Manager but were not stopped (say in the event of a parent process crash) **_††_**: 
+To stop any Tor instances that have been previously started by Tor Manager but were not stopped (say in the event of a parent process crash) **_††_**:
 
 ```ruby
-TorManager::TorProcess.stop_obsolete_processes 
+TorManager::TorProcess.stop_obsolete_processes
 ```
-	
-Query whether Tor Manager has any Tor processes running on a particular port **_††_**: 
+
+Query whether Tor Manager has any Tor processes running on a particular port **_††_**:
 
 ```ruby
-TorManager::TorProcess.tor_running_on? port: 9050 
+TorManager::TorProcess.tor_running_on? port: 9050
 ```
 
 Query whether Tor Manager has any Tor processes running on a particular port associated to a particular parent ruby pid **_††_**:
@@ -127,18 +129,18 @@ Query whether Tor Manager has any Tor processes running on a particular port ass
 TorManager::TorProcess.tor_running_on? port: 9050, parent_pid: 12345
 ```
 
-**_††_** Note that this command applies only to Tor processes that were started by Tor Manager. 
+**_††_** Note that this command applies only to Tor processes that were started by Tor Manager.
 Tor processes that have been started external to Tor Manager will not be impacted.  
 
 ### Proxy Through Tor, Query IP Address, Change IP Address
 
-Once you have a `TorProcess` started, you can: 
+Once you have a `TorProcess` started, you can:
 
 - [Proxy web client requests through Tor.](#proxy-through-tor)
-- [Query the current Tor endpoint IP address.](#query-ip-address) 
-- [Change the Tor endpoint IP address.](#change-ip-address) 
+- [Query the current Tor endpoint IP address.](#query-ip-address)
+- [Change the Tor endpoint IP address.](#change-ip-address)
 
-The remaining examples assume that you have instantiated a `TorProcess` ie: 
+The remaining examples assume that you have instantiated a `TorProcess` ie:
 
 ```ruby
 tor_process = TorManager::TorProcess.new
@@ -148,8 +150,8 @@ tor_process.start
 #### Proxy Through Tor
 
 ```ruby
-tor_proxy = TorManager::Proxy.new tor_process: tor_process 
-tor_proxy.proxy do 
+tor_proxy = TorManager::Proxy.new tor_process: tor_process
+tor_proxy.proxy do
   tor_ip = RestClient::Request.execute(
              method: :get,
              url: 'http://bot.whatismyipaddress.com').to_str
@@ -158,13 +160,13 @@ my_ip = RestClient::Request.execute(
              method: :get,
              url: 'http://bot.whatismyipaddress.com').to_str
 ```
-	
-Note that in the above code the `RestClient::Request` returning `tor_ip` is routed through the Tor endpoint because it is yielded 
-through the `TorManager::Proxy#proxy` block. The following request returning `my_ip` will not be routed through the Tor endpoint 
+
+Note that in the above code the `RestClient::Request` returning `tor_ip` is routed through the Tor endpoint because it is yielded
+through the `TorManager::Proxy#proxy` block. The following request returning `my_ip` will not be routed through the Tor endpoint
 hence returning your current IP address.
 
-You could route [Capybara](https://github.com/teamcapybara/capybara) requests through the proxy (just make sure you use the `:poltergeist` driver and set the proxy 
-to use the Tor socks proxy): 
+You could route [Capybara](https://github.com/teamcapybara/capybara) requests through the proxy (just make sure you use the `:poltergeist` driver and set the proxy
+to use the Tor socks proxy):
 
 ```ruby
 Capybara.default_driver = :poltergeist
@@ -174,48 +176,48 @@ Capybara.register_driver :poltergeist do |app|
     :phantomjs_options => ["--proxy-type=socks5", "--proxy=127.0.0.1:9050"]
   })
 end
-tor_proxy = TorManager::Proxy.new tor_process: tor_process 
-tor_proxy.proxy do 
+tor_proxy = TorManager::Proxy.new tor_process: tor_process
+tor_proxy.proxy do
   tor_ip = Capybara.visit('http://bot.whatismyipaddress.com').text
 end
 ```
 
-#### Query IP Address 
+#### Query IP Address
 
-Query the Tor endpoint for the current IP address: 
+Query the Tor endpoint for the current IP address:
 
 ```ruby
 tor_proxy = TorManager::Proxy.new tor_process: tor_process 	
-tor_ip_control = 
-  TorManager::IpAddressControl.new tor_process: tor_process, 
-                                   tor_proxy: tor_proxy 
+tor_ip_control =
+  TorManager::IpAddressControl.new tor_process: tor_process,
+                                   tor_proxy: tor_proxy
 tor_ip_control.get_ip									   
 ```
-	
-When the `TorManager::IpAddressControl#get_ip` method is called, the IP address is stored in instance variable: 
 
-```ruby
-tor_ip_control.ip 
-```
-	
-#### Change IP Address
-
-Get a new IP address: 
-
-```ruby
-tor_proxy = TorManager::Proxy.new tor_process: tor_process 	
-tor_ip_control = 
-  TorManager::IpAddressControl.new tor_process: tor_process, 
-                                   tor_proxy: tor_proxy 
-tor_ip_control.get_new_ip									   
-```
-
-When the `TorManager::IpAddressControl#get_new_ip` method is called, the IP address is stored in instance variable: 
+When the `TorManager::IpAddressControl#get_ip` method is called, the IP address is stored in instance variable:
 
 ```ruby
 tor_ip_control.ip
 ```
-	
+
+#### Change IP Address
+
+Get a new IP address:
+
+```ruby
+tor_proxy = TorManager::Proxy.new tor_process: tor_process 	
+tor_ip_control =
+  TorManager::IpAddressControl.new tor_process: tor_process,
+                                   tor_proxy: tor_proxy
+tor_ip_control.get_new_ip									   
+```
+
+When the `TorManager::IpAddressControl#get_new_ip` method is called, the IP address is stored in instance variable:
+
+```ruby
+tor_ip_control.ip
+```
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/joshweir/tormanager.

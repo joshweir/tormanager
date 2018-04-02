@@ -26,6 +26,8 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "~> 3.0"
   spec.add_development_dependency "rspec-rails", "~> 3.5"
   spec.add_development_dependency "gem-release"
+  spec.add_development_dependency "coveralls"
+  spec.add_development_dependency "simplecov"
   spec.add_dependency "rest-client"
   spec.add_dependency "eye"
   spec.add_dependency "eyemanager"
