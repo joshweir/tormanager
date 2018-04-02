@@ -3,11 +3,16 @@ require "spec_helper"
 module TorManager
   describe TorProcess do
     context 'when initialized with default params' do
+      before do 
+		allow_any_instance_of(TorProcess).to receive(:`)
+		  .with("tor --quiet --hash-password 'random_pass1'")
+		  .and_return('16:foo')
+        allow(SecureRandom)
+		  .to receive_message_chain('random_number.to_s.rjust')
+		  .and_return('random_pass1') 
+      end
+      
       it "initializes with default parameters" do
-        allow(subject).to receive(:random_password).and_return('random_pass1')
-        expect(subject).to receive(:`)
-          .with("tor --quiet --hash-password 'random_pass1'")
-          .and_return('16:foo')
         expect(subject.settings[:tor_port]).to eq 9050
         expect(subject.settings[:control_port]).to eq 50500
         expect(subject.settings[:pid_dir]).to eq '/tmp'
