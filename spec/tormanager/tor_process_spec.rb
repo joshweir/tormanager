@@ -2,14 +2,17 @@ require "spec_helper"
 
 module TorManager
   describe TorProcess do
-    before do
-      allow_any_instance_of(TorProcess).to receive(:`)
-        .with("tor --quiet --hash-password 'test_password'")
-        .and_return('16:foo')
-    end
+    #before do
+    #  allow_any_instance_of(TorProcess).to receive(:`)
+    #    .with("tor --quiet --hash-password 'test_password'")
+    #    .and_return('16:foo')
+    #end
 
     context 'when initialized with default params' do
       before do
+      #  allow_any_instance_of(TorProcess).to receive(:`)
+      #    .with("tor --quiet --hash-password 'random_pass1'")
+      #    .and_return('16:foo')
         allow(SecureRandom)
 		      .to receive_message_chain('random_number.to_s.rjust')
 		      .and_return('random_pass1')
