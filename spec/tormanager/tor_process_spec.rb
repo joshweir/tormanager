@@ -4,6 +4,9 @@ module TorManager
   describe TorProcess do
     context 'when initialized with default params' do
       it "initializes with default parameters" do
+        expect(subject).to receive(:`)
+          .with("tor --quiet --hash-password '#{subject.settings[:control_password]}'")
+          .and_return('16:foo')
         expect(subject.settings[:tor_port]).to eq 9050
         expect(subject.settings[:control_port]).to eq 50500
         expect(subject.settings[:pid_dir]).to eq '/tmp'
