@@ -4,8 +4,9 @@ module TorManager
   describe TorProcess do
     context 'when initialized with default params' do
       it "initializes with default parameters" do
+        allow(subject).to receive(:random_password).and_return('random_pass1')
         expect(subject).to receive(:`)
-          .with("tor --quiet --hash-password '#{subject.settings[:control_password]}'")
+          .with("tor --quiet --hash-password 'random_pass1'")
           .and_return('16:foo')
         expect(subject.settings[:tor_port]).to eq 9050
         expect(subject.settings[:control_port]).to eq 50500
@@ -18,7 +19,7 @@ module TorManager
         expect(subject.settings[:eye_tor_config_template])
             .to eq File.join(File.expand_path('../../..', __FILE__),
                              'lib/tormanager/eye/tor.template.eye.rb')
-        expect(subject.settings[:control_password].length).to eq 12
+        expect(subject.settings[:control_password]).to eq 'random_pass1'
         expect(subject.settings[:hashed_control_password][0..2])
             .to eq '16:'
         expect(subject.settings[:tor_log_switch]).to be_nil
