@@ -3,9 +3,9 @@ dist: trusty
 language: ruby
 rvm:
   - 2.3.1
-#script: rspec --pattern spec/\*\*\{,/\*/\*\*\}/\*_spec.rb --exclude-pattern **/features/*_spec.rb
+script: rspec --pattern spec/\*\*\{,/\*/\*\*\}/\*_spec.rb --exclude-pattern **/features/*_spec.rb
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -y tor
+#  - sudo apt-get update -qq
+#  - sudo apt-get install -y tor
   - gem install bundler -v 1.14.6
   - gem install sigar -- --with-cppflags="-fgnu89-inline"
